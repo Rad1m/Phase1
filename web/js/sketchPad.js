@@ -9,10 +9,18 @@ class SketchPad {
         `;
     container.appendChild(this.canvas);
 
+    const lineBreak = document.createElement("br");
+    container.appendChild(lineBreak);
+
+    this.undoBtn = document.createElement("button");
+    this.undoBtn.innerHTML = "UNDO";
+    container.appendChild(this.undoBtn);
+
     this.ctx = this.canvas.getContext("2d");
 
-    this.path = [];
+    this.paths = [];
     this.isDrawing = false;
+    this.#redraw();
 
     this.#addEventListeners();
   }
@@ -20,28 +28,55 @@ class SketchPad {
   // # means this is a private method and can't be called outside of this class
   #addEventListeners() {
     this.canvas.onmousedown = (evt) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const mouse = [
-        Math.round(evt.clientX - rect.left),
-        Math.round(evt.clientY - rect.top),
-      ];
-      // console.log(mouse);
-      this.path = [mouse];
+      const mouse = this.#getMouse(evt);
+      this.paths.push([mouse]);
       this.isDrawing = true;
     };
     this.canvas.onmousemove = (evt) => {
       if (this.isDrawing) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mouse = [
-          Math.round(evt.clientX - rect.left),
-          Math.round(evt.clientY - rect.top),
-        ];
-        this.path.push(mouse);
-        console.log(this.path.length);
+        const mouse = this.#getMouse(evt);
+        const lastPath = this.paths[this.paths.length - 1];
+        lastPath.push(mouse);
+        this.#redraw();
       }
     };
     this.canvas.onmouseup = () => {
       this.isDrawing = false;
     };
+    this.canvas.ontouchstart = (evt) => {
+      const loc = evt.touches[0];
+      this.canvas.onmousedown(loc);
+    };
+    this.canvas.ontouchmove = (evt) => {
+      const loc = evt.touches[0];
+      this.canvas.onmousemove(loc);
+    };
+    this.canvas.ontouchend = () => {
+      this.canvas.onmouseup();
+    };
+    this.undoBtn.onclick = () => {
+      this.paths.pop(); // remove previous paths
+      this.#redraw();
+    };
   }
+
+  #redraw() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    draw.paths(this.ctx, this.paths);
+    if (this.paths.length > 0) {
+      this.undoBtn.disabled = false;
+    } else {
+      this.undoBtn.disabled = true;
+    }
+  }
+
+  // private method
+  #getMouse = (evt) => {
+    const rect = this.canvas.getBoundingClientRect();
+    const mouse = [
+      Math.round(evt.clientX - rect.left),
+      Math.round(evt.clientY - rect.top),
+    ];
+    return mouse;
+  };
 }
